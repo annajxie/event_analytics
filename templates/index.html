@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Query Explorer{% endblock %}
+
+{% block extra_styles %}
+    <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    #header {
+      text-align: center;
+      padding-top: 40px;
+      padding-bottom: 20px;
+    }
+    #header h1 {
+      font-size: 1.6em;
+      font-weight: 600;
+    }
+    #header p {
+      color: #6c757d;
+      font-size: 0.95em;
+    }
+    .query-card {
+      cursor: pointer;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      background: white;
+      transition: border-color 0.15s;
+    }
+    .query-card:hover {
+      border-color: #0d6efd;
+    }
+    .query-card.active {
+      border-color: #0d6efd;
+      background-color: #f0f5ff;
+    }
+    .query-card .qname {
+      font-size: 0.9em;
+      font-weight: 500;
+      display: block;
+    }
+    .query-card .qdesc {
+      font-size: 0.78em;
+      color: #6c757d;
+      display: block;
+      margin-top: 2px;
+    }
+    .qname{
+      padding-top: 7px;
+    }
+    .plan-badge {
+      font-size: 0.7em;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 500;
+      margin-top: 6px;
+      display: inline-block;
+    }
+    .badge-seq { background: #fff3cd; color: #856404; }
+    .badge-idx { background: #cfe2ff; color: #084298; }
+    .badge-bmp { background: #e8d5fb; color: #5a2d82; }
+    .badge-hash { background: #d1e7dd; color: #0a3622; }
+    .badge-loop { background: #fde8e8; color: #842029; }
+    .badge-mvcc { background: #e2e3e5; color: #41464b; }
+ 
+    #detail-panel {
+      background: white;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 24px;
+      min-height: 500px;
+    }
+    #detail-panel h5 {
+      font-size: 1em;
+      font-weight: 600;
+    }
+    #detail-panel .section-label {
+      font-size: 0.72em;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #6c757d;
+      margin-bottom: 8px;
+      margin-top: 20px;
+    }
+    .sql-block {
+      background: #f1f3f5;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: monospace;
+      font-size: 0.82em;
+      line-height: 1.7;
+      white-space: pre;
+      overflow-x: auto;
+      border: 1px solid #dee2e6;
+    }
+    .sql-block .kw { color: #0d6efd; font-weight: 600; }
+    .sql-block .val { color: #198754; }
+    .sql-block .cm { color: #adb5bd; }
+ 
+    #plan-output {
+      background: #212529;
+      color: #adb5bd;
+      border-radius: 6px;
+      padding: 14px 16px;
+      font-family: monospace;
+      font-size: 0.8em;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      min-height: 80px;
+    }
+    .mapping-box{
+      border-top: 3px solid blue;
+      padding-top: 10px;
+    }
+    .mapping-box p {
+      font-size: 0.88em;
+      color: #495057;
+      line-height: 1.7;
+      margin-bottom: 10px;
+    }
+    .mapping-box strong {
+      color: #212529;
+    }
+    .run-btn {
+      font-size: 0.85em;
+    }
+    .placeholder-text {
+      color: #adb5bd;
+      font-size: 0.88em;
+      font-family: monospace;
+    }
+  </style>
+  {% endblock %}
+</head>
+{% block content %}
+<body>
+ 
+  <div id="header">
+    <h1>PostgreSQL Query Optimizer Explorer</h1>
+    <p>DSCI 551 &mdash; Anna Xie &mdash; <a href="mailto:ajxie@usc.edu">ajxie@usc.edu</a></p>
+  </div>
+ 
+  <div class="container mb-5">
+    <div class="row g-4">
+ 
+      <!-- Sidebar: query list -->
+      <div class="col-md-3">
+        <p class="section-label" style="font-size:0.72em;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#6c757d;margin-bottom:10px;">Benchmark queries</p>
+ 
+        <div class="query-card active" onclick="selectQuery(0)">
+          <span class="plan-badge badge-seq">Sequential Scan</span>
+          <span class="qname">Filter by common event type</span>
+        </div>
+ 
+        <div class="query-card" onclick="selectQuery(1)">
+          <span class="plan-badge badge-idx">Index Scan</span>
+          <span class="qname">Filter by rare event type</span>
+        </div>
+ 
+        <div class="query-card" onclick="selectQuery(2)">
+          <span class="plan-badge badge-bmp">Bitmap Heap Scan</span>
+          <span class="qname">Date range query</span>
+        </div>
+ 
+        <div class="query-card" onclick="selectQuery(3)">
+          <span class="plan-badge badge-idx">Index Only Scan</span>
+          <span class="qname">Status count, no heap access</span>
+        </div>
+ 
+        <div class="query-card" onclick="selectQuery(4)">
+          <span class="plan-badge badge-hash">Hash Join</span>
+          <span class="qname">Users &times; Events join</span>
+        </div>
+ 
+        <div class="query-card" onclick="selectQuery(5)">
+          <span class="plan-badge badge-loop">Nested Loop</span>
+          <span class="qname">Single-user lookup</span>
+        </div>
+ 
+        <div class="query-card" onclick="selectQuery(6)">
+          <span class="plan-badge badge-idx">Composite Index Scan</span>
+          <span class="qname">Type + date predicate</span>
+        </div>
+ 
+        <div class="query-card" onclick="selectQuery(7)">
+          <span class="plan-badge badge-hash">HashAggregate</span>
+          <span class="qname">Group by type + region</span>
+        </div>
+ 
+        <!-- <div class="query-card" onclick="selectQuery(8)">
+          <span class="qname">MVCC demo</span>
+          <span class="qdesc">Concurrent read/write snapshot</span>
+          <span class="plan-badge badge-mvcc">MVCC</span>
+        </div> -->
+ 
+      </div>
+ 
+      <!-- Detail panel -->
+      <div class="col-md-9">
+        <div id="detail-panel">
+ 
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <h5 id="q-title">Sequential scan</h5>
+              <p id="q-desc" style="font-size:0.88em;color:#6c757d;margin-bottom:0">
+                Selecting rows where <code>event_type = 'concert'</code> returns too many rows for the index to help. PostgreSQL reads every heap page instead.
+              </p>
+            </div>
+            <span id="q-badge" class="plan-badge badge-seq ms-3" style="white-space:nowrap;flex-shrink:0">Seq Scan</span>
+          </div>
+ 
+          <div class="section-label">SQL query</div>
+          <div class="sql-block" id="q-sql"><span class="cm">-- low selectivity → sequential scan</span>
+<span class="kw">EXPLAIN ANALYZE</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> events
+<span class="kw">WHERE</span> event_type = <span class="val">'concert'</span>;</div>
+ 
+          <div class="mt-3">
+            <button class="btn btn-primary btn-sm run-btn" onclick="runQuery()">&#9654; Run query</button>
+          </div>
+ 
+          <div class="section-label">EXPLAIN ANALYZE output</div>
+          <div id="plan-output"><span class="placeholder-text">...runs query against event_analytics database...</span></div>
+ 
+          <div class="section-label">Application mapping</div>
+          <div class="mapping-box" id="q-mapping">
+            <p><strong>Query:</strong> Retrieves all events of a common type to display on a dashboard.</p>
+            <p><strong>Internal PostgreSQL:</strong> The optimizer estimates that ~50% of rows match. Fetching them via index requires thousands of random page reads — more expensive than reading all heap pages sequentially. It chooses Seq Scan.</p>
+            <p><strong>Why it matters:</strong> Indexes are not universally beneficial — selectivity determines whether an index is worth using. This threshold is controlled by the <code>random_page_cost</code> parameter (default 4.0).</p>
+          </div>
+ 
+        </div>
+      </div>
+ 
+    </div>
+  </div>
+
+  {% endblock %}
+ {% block extra_scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const queries = [
+      {
+        name: "Sequential scan",
+        desc: "Selecting rows where <code>event_type = 'concert'</code> returns too many rows for the index to help. PostgreSQL reads every heap page instead.",
+        badge: "badge-seq", badgeLabel: "Sequential Scan",
+        endpoint: "seq_scan",
+        sql: `<span class="cm">-- low selectivity → sequential scan</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> * <span class="kw">FROM</span> events\n<span class="kw">WHERE</span> event_type = <span class="val">'concert'</span>;`,
+        mapping: `
+          <p><strong>Query:</strong> Retrieves all events of a common type to display on a dashboard.</p>
+          <p><strong>Internal PostgreSQL:</strong> The optimizer estimates ~50% of rows match. Fetching via index requires thousands of random page reads — more expensive than reading all heap pages sequentially. It chooses Seq Scan.</p>
+          <p><strong>Why it matters:</strong> Indexes are not universally beneficial — selectivity determines whether an index is worth using. Controlled by <code>random_page_cost</code> (default 4.0).</p>`
+      },
+      {
+        name: "Index scan",
+        desc: "Filtering by a rare event type returns very few rows. The optimizer chooses a B-tree index scan.",
+        badge: "badge-idx", badgeLabel: "Index Scan",
+        endpoint: "index_scan",
+        sql: `<span class="cm">-- high selectivity → index scan</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> * <span class="kw">FROM</span> events\n<span class="kw">WHERE</span> event_type = <span class="val">'corporate'</span>;`,
+        mapping: `
+          <p><strong>Query:</strong> Filters events to display only a rare category.</p>
+          <p><strong>Internal PostgreSQL:</strong> Very few rows match. The optimizer traverses the B-tree on event_type, fetches matching TIDs, then does random heap lookups. With so few rows, random I/O cost is negligible.</p>
+          <p><strong>Why it matters:</strong> Shows the cost threshold for index usage. ANALYZE statistics tell the planner how many rows to expect — this is why running ANALYZE after bulk loads matters.</p>`
+      },
+      {
+        name: "Bitmap heap scan",
+        desc: "A date range query has intermediate selectivity — too many rows for a pure index scan, few enough that a full table scan is wasteful.",
+        badge: "badge-bmp", badgeLabel: "Bitmap Heap Scan",
+        endpoint: "bitmap_scan",
+        sql: `<span class="cm">-- intermediate selectivity → bitmap heap scan</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> * <span class="kw">FROM</span> events\n<span class="kw">WHERE</span> event_date <span class="kw">BETWEEN</span> <span class="val">'2024-06-01'</span> <span class="kw">AND</span> <span class="val">'2024-09-01'</span>;`,
+        mapping: `
+          <p><strong>Query:</strong> Loads events within a summer date range for an analytics view.</p>
+          <p><strong>Internal PostgreSQL:</strong> Collects all matching TIDs from the B-tree index into a bitmap, then reads heap pages in physical order — eliminating random I/O by batching reads.</p>
+          <p><strong>Why it matters:</strong> Bitmap scans are the middle ground between index scans and sequential scans. They trade a small amount of memory for a large reduction in random disk access.</p>`
+      },
+      {
+        name: "Index-only scan",
+        desc: "Counting events by status — PostgreSQL can answer this entirely from the index without touching the heap.",
+        badge: "badge-idx", badgeLabel: "Index Only Scan",
+        endpoint: "index_only_scan",
+        sql: `<span class="cm">-- all needed columns in index → index-only scan</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> status, <span class="kw">COUNT</span>(*) <span class="kw">FROM</span> events\n<span class="kw">WHERE</span> status = <span class="val">'active'</span>\n<span class="kw">GROUP BY</span> status;`,
+        mapping: `
+          <p><strong>Query:</strong> Displays a count of active events in a summary card.</p>
+          <p><strong>Internal PostgreSQL:</strong> Because status is in the index and the visibility map is up to date, the executor never opens the heap at all — Heap Fetches: 0.</p>
+          <p><strong>Why it matters:</strong> Demonstrates how covering indexes and VACUUM interact. If VACUUM hasn't run, heap fetches &gt; 0 as the planner must verify row visibility.</p>`
+      },
+      {
+        name: "Hash join",
+        desc: "Joining all users to their events — PostgreSQL builds a hash table on the smaller relation (users) and probes it with event rows.",
+        badge: "badge-hash", badgeLabel: "Hash Join",
+        endpoint: "hash_join",
+        sql: `<span class="cm">-- large join → hash join</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> u.name, e.event_type, e.event_date\n<span class="kw">FROM</span> users u\n<span class="kw">JOIN</span> events e <span class="kw">ON</span> u.user_id = e.user_id\n<span class="kw">WHERE</span> e.event_date >= <span class="val">'2024-01-01'</span>;`,
+        mapping: `
+          <p><strong>Query:</strong> Displays event history enriched with the user's name.</p>
+          <p><strong>Internal PostgreSQL:</strong> Loads users into an in-memory hash table keyed on user_id, then streams events and probes the hash table for each row. O(N+M) with one pass over each table.</p>
+          <p><strong>Why it matters:</strong> Hash joins are chosen when both inputs are large and unsorted. <code>work_mem</code> controls the hash table size — if it spills to disk, performance degrades significantly.</p>`
+      },
+      {
+        name: "Nested loop join",
+        desc: "Fetching events for a single user — the outer side is one row, so the inner side uses an index lookup.",
+        badge: "badge-loop", badgeLabel: "Nested Loop",
+        endpoint: "nested_loop",
+        sql: `<span class="cm">-- single-user lookup → nested loop join</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> u.name, e.event_type, e.event_date\n<span class="kw">FROM</span> users u\n<span class="kw">JOIN</span> events e <span class="kw">ON</span> u.user_id = e.user_id\n<span class="kw">WHERE</span> u.user_id = <span class="val">42</span>;`,
+        mapping: `
+          <p><strong>Query:</strong> Loads a single user's event history on their profile page.</p>
+          <p><strong>Internal PostgreSQL:</strong> The outer loop runs once (one user row). For that row, the inner loop uses the index on events.user_id to fetch only the matching events — no table scan needed.</p>
+          <p><strong>Why it matters:</strong> Nested loop joins excel when the outer side is small. The key enabler is the index on the join column — without it, PostgreSQL falls back to a hash join.</p>`
+      },
+      {
+        name: "Composite index scan",
+        desc: "Filtering on both event_type and event_date together — the composite index satisfies both conditions in one B-tree traversal.",
+        badge: "badge-idx", badgeLabel: "Index Scan",
+        endpoint: "composite_index",
+        sql: `<span class="cm">-- two-column predicate → composite index scan</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> * <span class="kw">FROM</span> events\n<span class="kw">WHERE</span> event_type = <span class="val">'corporate'</span>\n  <span class="kw">AND</span> event_date <span class="kw">BETWEEN</span> <span class="val">'2024-03-01'</span> <span class="kw">AND</span> <span class="val">'2024-12-01'</span>;`,
+        mapping: `
+          <p><strong>Query:</strong> Finds corporate events within a booking window for a filtered report.</p>
+          <p><strong>Internal PostgreSQL:</strong> The composite index (event_type, event_date) lets the planner traverse directly to the 'corporate' subtree, then range-scan within it — a single index scan satisfies both conditions.</p>
+          <p><strong>Why it matters:</strong> Column order in composite indexes matters — (event_type, event_date) answers queries on event_type alone or both together, but NOT on event_date alone.</p>`
+      },
+      {
+        name: "HashAggregate",
+        desc: "A GROUP BY query across both tables — PostgreSQL streams rows through a hash table keyed by the grouping columns.",
+        badge: "badge-hash", badgeLabel: "HashAggregate",
+        endpoint: "hash_aggregate",
+        sql: `<span class="cm">-- aggregation → HashAggregate</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> event_type, region,\n       <span class="kw">COUNT</span>(*) <span class="kw">AS</span> event_count,\n       <span class="kw">AVG</span>(attendees) <span class="kw">AS</span> avg_attendees\n<span class="kw">FROM</span> events e\n<span class="kw">JOIN</span> users u <span class="kw">ON</span> e.user_id = u.user_id\n<span class="kw">GROUP BY</span> event_type, region\n<span class="kw">ORDER BY</span> event_count <span class="kw">DESC</span>;`,
+        mapping: `
+          <p><strong>Query:</strong> Powers an analytics dashboard showing event counts and average attendance by type and region.</p>
+          <p><strong>Internal PostgreSQL:</strong> After the hash join, rows flow into a HashAggregate node that builds an in-memory hash table keyed by (event_type, region), accumulating COUNT and AVG as each row arrives.</p>
+          <p><strong>Why it matters:</strong> HashAggregate is chosen when groups aren't pre-sorted. If data were sorted by the grouping keys, PostgreSQL would use GroupAggregate instead, which is more memory-efficient.</p>`
+      }
+          // },
+      // {
+      //   name: "MVCC demo",
+      //   desc: "Demonstrates how PostgreSQL lets a reader see a consistent snapshot while a concurrent writer has an uncommitted transaction open.",
+      //   badge: "badge-mvcc", badgeLabel: "MVCC",
+      //   endpoint: null,
+      //   sql: `<span class="cm">-- Terminal 1: open a transaction, don't commit yet</span>\n<span class="kw">BEGIN</span>;\n<span class="kw">UPDATE</span> events <span class="kw">SET</span> status = <span class="val">'inactive'</span>\n<span class="kw">WHERE</span> event_id = <span class="val">1</span>;\n\n<span class="cm">-- Terminal 2: reader sees OLD value (snapshot isolation)</span>\n<span class="kw">EXPLAIN ANALYZE</span>\n<span class="kw">SELECT</span> * <span class="kw">FROM</span> events <span class="kw">WHERE</span> event_id = <span class="val">1</span>;\n\n<span class="cm">-- Back in Terminal 1:</span>\n<span class="kw">ROLLBACK</span>;`,
+      //   mapping: `
+      //     <p><strong>Query:</strong> Two users interact with the same event simultaneously — one editing, one viewing.</p>
+      //     <p><strong>Internal PostgreSQL:</strong> The UPDATE creates a new row version tagged with the writer's transaction ID (xmax on old row, xmin on new). The reader's snapshot predates the transaction, so it sees the old version. No lock is held against the reader.</p>
+      //     <p><strong>Why it matters:</strong> MVCC is why PostgreSQL supports high read concurrency without blocking. The tradeoff is dead tuple accumulation — old row versions must be reclaimed by VACUUM.</p>`
+      // }
+    ];
+ 
+    let currentQuery = 0;
+ 
+    function selectQuery(i) {
+      currentQuery = i;
+      document.querySelectorAll('.query-card').forEach((c, j) => c.classList.toggle('active', i === j));
+      const q = queries[i];
+      document.getElementById('q-title').textContent = q.name;
+      document.getElementById('q-desc').innerHTML = q.desc;
+      const badge = document.getElementById('q-badge');
+      badge.className = 'plan-badge ms-3 ' + q.badge;
+      badge.textContent = q.badgeLabel;
+      document.getElementById('q-sql').innerHTML = q.sql;
+      document.getElementById('q-mapping').innerHTML = q.mapping;
+      document.getElementById('plan-output').innerHTML = '<span class="placeholder-text">...runs query against database...</span>';
+ 
+      const btn = document.querySelector('.run-btn');
+      if (q.endpoint === null) {
+        btn.textContent = 'Run manually in two psql terminals';
+        btn.disabled = true;
+      } else {
+        btn.innerHTML = '&#9654; Run query';
+        btn.disabled = false;
+      }
+    }
+ 
+    async function runQuery() {
+      const q = queries[currentQuery];
+      if (!q.endpoint) return;
+      const output = document.getElementById('plan-output');
+      output.textContent = 'Running...';
+      try {
+        const response = await fetch(`/run/${q.endpoint}`);
+        const data = await response.json();
+        if (data.error) {
+          output.textContent = 'Error: ' + data.error;
+        } else {
+          output.textContent = data.plan.join('\n');
+        }
+      } catch (err) {
+        output.textContent = 'Could not connect to Flask server. Make sure app.py is running.';
+      }
+    }
+  </script>
+  {% endblock %}
+ 
+</body>
+</html>
