@@ -18,7 +18,7 @@ benchmark query types.
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/event_analytics.git
+git clone https://github.com/annajxie/event_analytics.git
 cd event_analytics
 ```
 
