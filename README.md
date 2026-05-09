@@ -53,14 +53,8 @@ of schema.sql, or run it via psql:
 psql -U postgres -d event_analytics -f schema.sql
 ```
 
-### 6. Generate and load data
-```bash
-python generate_data.py
-```
-This inserts 10,000 users and 100,000 events with a skewed distribution 
-designed to trigger different query plans.
 
-### 7. Configure your database connection
+### 6. Configure your database connection
 Open app.py and generate_data.py and update the password field in 
 both files to match your local PostgreSQL setup.
 ```python
@@ -73,6 +67,14 @@ def get_conn():
         password="YOUR_PASSWORD_HERE"
     )
 ```
+
+### 7. Generate and load data
+```bash
+python generate_data.py
+```
+This inserts 10,000 users and 100,000 events with a skewed distribution 
+designed to trigger different query plans.
+
 
 ### 8. Run the application
 ```bash
