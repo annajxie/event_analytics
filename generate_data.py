@@ -6,7 +6,7 @@ fake = Faker()
 conn = psycopg2.connect(
     dbname="event_analytics",
     user="postgres",
-    password="annAx13",
+    password="YOUR_PASSWORD_HERE",
     host="localhost",
     port="5432"
 )
