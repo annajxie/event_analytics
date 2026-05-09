@@ -10,7 +10,7 @@ def get_conn():
         port=5432,
         dbname="event_analytics",
         user="postgres",
-        password="YOUR_PASSWORD_HERE"
+        password="annAx13"
     )
     cur = conn.cursor()
     cur.execute("SET random_page_cost = 2.0;")

@@ -61,8 +61,8 @@ This inserts 10,000 users and 100,000 events with a skewed distribution
 designed to trigger different query plans.
 
 ### 7. Configure your database connection
-Open app.py and update the connection details in get_conn() to match 
-your local PostgreSQL setup:
+Open app.py and generate_data.py and update the password field in 
+both files to match your local PostgreSQL setup.
 ```python
 def get_conn():
     return psycopg2.connect(
